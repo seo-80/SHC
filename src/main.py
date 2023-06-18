@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import time
 randam = np.random.default_rng()
 
 class shc():
@@ -90,40 +91,55 @@ class recognizer():
         self.rho1=rho([[0,1,2,3],[3,2,1,0],[1,2,3,0]])
         self.shc2=shc(1/32,0.3,[0,0],self.rho2,self.x2)
         self.shc1=shc(1/8,0.3,[0,0],self.rho1,self.x1)
-        self.var_scaler=0
+        self.var_scaler=2#2にする。計算速度見たくてオーバフローしちゃう時に0とかにする
+        self.x2_old=self.x2
+        self.v2_old=self.v2
+        self.x1_old=self.x1
 
-    def update(self,v1):
+
+    def update(self,v1,h):
         self.shc2.x=self.x2
-        self.x2=self.x2+self.shc2.differentiate([1])+(self.v2-S(self.x2))*S_diff(self.x2)/(self.var[0][1]**self.var_scaler)-(self.x2-(self.x2_record[:,-1]+self.shc2.differentiate([1],self.x2_record[:,-1])))/(self.var[0][0]**self.var_scaler)
+        self.x2=self.x2+(self.shc2.differentiate([1])+(self.v2-S(self.x2))*S_diff(self.x2)/(self.var[0][1]**self.var_scaler)-(self.x2-(self.x2_old+self.shc2.differentiate([1],self.x2_old)))/(self.var[0][0]**self.var_scaler))*h
 
         self.shc1.x=self.x1
         f1_diff=False
         f1_diff=np.array([self.rho1([1,0,0])@S(self.x1)/8])
         f1_diff=np.append(f1_diff,[self.rho1([0,1,0])@S(self.x1)/8],axis=0)
         f1_diff=np.append(f1_diff,[self.rho1([0,0,1])@S(self.x1)/8],axis=0)
+        # f1_diff=np.array([self.rho1([1,0,0])@S(self.x1)/8,self.rho1([0,1,0])@S(self.x1)/8,self.rho1([0,0,1])@S(self.x1)/8])
         
-        self.v2=self.v2+S(self.x2)-S(self.x2_record[:,-1])   -(self.v2-S(self.x2))/(var[0][1]**self.var_scaler) +f1_diff@(self.x1-self.x1_record[:,-1]-self.shc1.differentiate(self.v2))/(self.var[1][0]**self.var_scaler)
+        self.v2=self.v2+(S(self.x2-self.x2_old)    +f1_diff@(self.x1-self.x1_old-self.shc1.differentiate(self.v2))/(self.var[1][0]**self.var_scaler)-(self.v2-S(self.x2))/(var[0][1]**self.var_scaler))*h
 
-        self.x1=self.x1+self.shc1.differentiate(self.v2)+(self.v1-S(self.x1))*S_diff(self.x1)/(self.var[1][1]**self.var_scaler)-(self.x1-(self.x1_record[:,-1]+self.shc1.differentiate(self.v2)))/(self.var[1][0]**self.var_scaler)
-        if not self.x1[0]==np.nan:
-            print(self.x1,self.v2,self.x2)
+        self.x1=self.x1+(self.shc1.differentiate(self.v2)+(self.v1-S(self.x1))*S_diff(self.x1)/(self.var[1][1]**self.var_scaler)-(self.x1-(self.x1_old+self.shc1.differentiate(self.v2)))/(self.var[1][0]**self.var_scaler))*h
         self.v1=v1
-    def simulate(self,v1):
+
+        self.x2_old=self.x2
+        self.v2_old=self.v2
+        self.x1_old=self.x1
+    def simulate(self,v1,n,Division_number=1):
         for i in range(n-1):
-            self.update(v1[:,i])
+            if i%10==0:
+                print(i)
+            for j in range(Division_number):
+                self.update(v1[:,i],1/Division_number)
             self.x2_record=np.append(self.x2_record,self.x2.reshape(3,1),axis=1)
             self.x1_record=np.append(self.x1_record,self.x1.reshape(4,1),axis=1)
             self.v2_record=np.append(self.v2_record,self.v2.reshape(3,1),axis=1)
             self.v1_record=np.append(self.v1_record,self.v1.reshape(4,1),axis=1)
 
 
-n=500
+n=1000
 var=[[0.1,0.1],[0.1,0.1]]
 speaker=speaker(var=var)
 recognizer=recognizer(var=var)
 speaker.simulate(n)
+start=time.time()
+recognizer.simulate(speaker.v1,n,Division_number=10000)#分割数は10000は必要
+print(time.time()-start)
 
-recognizer.simulate(speaker.v1)
+
+
+
 figure_num=6
 plt.subplot(figure_num*100+11)
 for i in range(3):
