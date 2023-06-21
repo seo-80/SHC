@@ -126,7 +126,7 @@ class recognizer():
         f1_diff=np.append(f1_diff,[self.rho1([0,0,1])@S(self.x1)/8],axis=0)
         t=np.linspace(0, 1, Division_number)
         self.x1=odeint(lambda x,t:(self.shc1.differentiate(self.v2)+(self.v1-S(x))*S_diff(x)/(self.var[1][1]**self.var_scaler)-(x-(self.x1_old+self.shc1.differentiate(self.v2)))/(self.var[1][0]**self.var_scaler)),self.x1,t)[-1]
-        self.x2=odeint(lambda x,t:(S(x-self.x2_old)    +f1_diff@(self.x1-self.x1_old-self.shc1.differentiate(self.v2))/(self.var[1][0]**self.var_scaler)-(self.v2-S(x))/(var[0][1]**self.var_scaler)),self.x2   ,t)[-1]
+        self.x2=odeint(lambda x,t:(self.shc2.differentiate([1])+(self.v2-S(x))*S_diff(x)/(self.var[0][1]**self.var_scaler)-(x-(self.x2_old+self.shc2.differentiate([1],self.x2_old)))/(self.var[0][0]**self.var_scaler)),self.x2   ,t)[-1]
         self.v2=odeint(lambda x,t:(S(self.x2-self.x2_old)    +f1_diff@(self.x1-self.x1_old-self.shc1.differentiate(x))/(self.var[1][0]**self.var_scaler)-(x-S(self.x2))/(var[0][1]**self.var_scaler)),self.v2,t)[-1]
         self.x2_old=self.x2
         self.v2_old=self.v2
