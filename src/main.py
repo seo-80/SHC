@@ -4,6 +4,7 @@ import random
 import time
 from scipy.integrate import odeint
 randam = np.random.default_rng()
+import time
 
 class shc():
     def __init__(self,kappa,rambda,var,rho=False,x0=[0,0,0]) -> None:
@@ -97,23 +98,30 @@ class recognizer():
         self.v2_old=self.v2
         self.x1_old=self.x1
         self.use_scipy=use_scipy
+        self.x2_old2=self.x2_old
+        self.v2_old2=self.v2_old
+        self.x1_old2=self.x1_old
 
 
     def update(self,v1,h):
-        self.shc2.x=self.x2
-        self.x2=self.x2+(self.shc2.differentiate([1])+(self.v2-S(self.x2))*S_diff(self.x2)/(self.var[0][1]**self.var_scaler)-(self.x2-(self.x2_old+self.shc2.differentiate([1],self.x2_old)))/(self.var[0][0]**self.var_scaler))*h
+        self.shc2.x=self.x2_old
+        self.x2=self.x2_old+(self.shc2.differentiate([1])+(self.v2_old-S(self.x2_old))*S_diff(self.x2_old)/(self.var[0][1]**self.var_scaler)-(self.x2_old-(self.x2_old2+self.shc2.differentiate([1],self.x2_old2)))/(self.var[0][0]**self.var_scaler))*h
 
-        self.shc1.x=self.x1
+        self.shc1.x=self.x1_old
         f1_diff=False
-        f1_diff=np.array([self.rho1([1,0,0])@S(self.x1)/8])
-        f1_diff=np.append(f1_diff,[self.rho1([0,1,0])@S(self.x1)/8],axis=0)
-        f1_diff=np.append(f1_diff,[self.rho1([0,0,1])@S(self.x1)/8],axis=0)
-        # f1_diff=np.array([self.rho1([1,0,0])@S(self.x1)/8,self.rho1([0,1,0])@S(self.x1)/8,self.rho1([0,0,1])@S(self.x1)/8])
+        f1_diff=np.array([self.rho1([1,0,0])@S(self.x1_old)/8])
+        f1_diff=np.append(f1_diff,[self.rho1([0,1,0])@S(self.x1_old)/8],axis=0)
+        f1_diff=np.append(f1_diff,[self.rho1([0,0,1])@S(self.x1_old)/8],axis=0)
+        # f1_diff=np.array([self.rho1([1,0,0])@S(self.x1_old)/8,self.rho1([0,1,0])@S(self.x1_old)/8,self.rho1([0,0,1])@S(self.x1_old)/8])
         
-        self.v2=self.v2+(S(self.x2-self.x2_old)    +f1_diff@(self.x1-self.x1_old-self.shc1.differentiate(self.v2))/(self.var[1][0]**self.var_scaler)-(self.v2-S(self.x2))/(var[0][1]**self.var_scaler))*h
+        self.v2=self.v2_old+(S(self.x2_old-self.x2_old2)    +f1_diff@(self.x1_old-self.x1_old2-self.shc1.differentiate(self.v2_old))/(self.var[1][0]**self.var_scaler)-(self.v2_old-S(self.x2_old))/(var[0][1]**self.var_scaler))*h
 
-        self.x1=self.x1+(self.shc1.differentiate(self.v2)+(self.v1-S(self.x1))*S_diff(self.x1)/(self.var[1][1]**self.var_scaler)-(self.x1-(self.x1_old+self.shc1.differentiate(self.v2)))/(self.var[1][0]**self.var_scaler))*h
+        self.x1=self.x1_old+(self.shc1.differentiate(self.v2_old)+(self.v1-S(self.x1_old))*S_diff(self.x1_old)/(self.var[1][1]**self.var_scaler)-(self.x1_old-(self.x1_old2+self.shc1.differentiate(self.v2_old)))/(self.var[1][0]**self.var_scaler))*h
         self.v1=v1
+
+        self.x2_old2=self.x2_old
+        self.v2_old2=self.v2_old
+        self.x1_old2=self.x1_old
 
         self.x2_old=self.x2
         self.v2_old=self.v2
@@ -127,14 +135,19 @@ class recognizer():
         t=np.linspace(0, 1, Division_number)
         self.x1=odeint(lambda x,t:(self.shc1.differentiate(self.v2)+(self.v1-S(x))*S_diff(x)/(self.var[1][1]**self.var_scaler)-(x-(self.x1_old+self.shc1.differentiate(self.v2)))/(self.var[1][0]**self.var_scaler)),self.x1,t)[-1]
         self.x2=odeint(lambda x,t:(self.shc2.differentiate([1])+(self.v2-S(x))*S_diff(x)/(self.var[0][1]**self.var_scaler)-(x-(self.x2_old+self.shc2.differentiate([1],self.x2_old)))/(self.var[0][0]**self.var_scaler)),self.x2   ,t)[-1]
-        self.v2=odeint(lambda x,t:(S(self.x2-self.x2_old)    +f1_diff@(self.x1-self.x1_old-self.shc1.differentiate(x))/(self.var[1][0]**self.var_scaler)-(x-S(self.x2))/(var[0][1]**self.var_scaler)),self.v2,t)[-1]
+        self.v2=odeint(lambda x,t:(S(self.x2-self.x2_old)+f1_diff@(self.x1-self.x1_old-self.shc1.differentiate(x))/(self.var[1][0]**self.var_scaler)-(x-S(self.x2))/(var[0][1]**self.var_scaler)),self.v2,t)[-1]
         self.x2_old=self.x2
         self.v2_old=self.v2
         self.x1_old=self.x1
     def simulate(self,v1,n,Division_number=1):
+        start=time.time()
         for i in range(n-1):
+            if i==1:
+                print((time.time()-start)*n)
             if i%10==0:
                 print(i)
+                print("残り時間"+str((start-time.time())*(n-i)/10))
+                start=time.time()
                 print(self.x1)
             if self.use_scipy:
                 self.update_by_scipy(v1[:,i],Division_number=Division_number)
@@ -150,10 +163,10 @@ class recognizer():
 n=1000
 var=[[0.1,0.1],[0.1,0.1]]
 speaker=speaker(var=var)
-recognizer=recognizer(var=var)
+recognizer=recognizer(var=var,use_scipy=False)
 speaker.simulate(n)
 start=time.time()
-recognizer.simulate(speaker.v1,n,Division_number=100000)#分割数は10000は必要
+recognizer.simulate(speaker.v1,n,Division_number=10000)#分割数は10000は必要
 print(time.time()-start)
 
 
